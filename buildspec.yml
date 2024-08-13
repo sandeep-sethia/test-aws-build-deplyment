@@ -1,25 +1,30 @@
 version: 0.2
 
 phases:
+  install:
+    commands:
+      - echo "Install Stage..."
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 813080135850.dkr.ecr.ap-southeast-1.amazonaws.com
   build:
     commands:
-      - echo Retrieving PFX certificate and password from Secrets Manager...
-      - export CERTIFICATE_CONTENT=$(aws secretsmanager get-secret-value --secret-id my-pfx-cert1 --query SecretBinary --output text | base64)
-      - export PFX_PASSWORD=$(aws secretsmanager get-secret-value --secret-id my-pfx-password --query SecretString --output text)
-      - echo Building the Docker image...
-      - docker build --build-arg CERTIFICATE_CONTENT=$CERTIFICATE_CONTENT --build-arg PFX_PASSWORD=$PFX_PASSWORD -t my-image .
+      - echo "Build started on `date`"
+      - echo "Building the Docker image..."
+      - docker build -t optimusv2app .
+      - docker tag optimusv2app:latest 813080135850.dkr.ecr.ap-southeast-1.amazonaws.com/optimus_ecr_uat:latest
   post_build:
     commands:
-      - echo Tagging the Docker image...
-      - docker tag my-image:latest $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/my-image:latest
-      - echo Pushing the Docker image...
-      - docker push $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/my-image:latest
+      - echo "Build completed on `date`"
+      - echo "Pushing the Docker image..."
+      - docker push 813080135850.dkr.ecr.ap-southeast-1.amazonaws.com/optimus_ecr_uat:latest
+      - echo "Creating imagedefinitions.json file..."
+      # - "echo '[{\"name\":\"dotnetapplication\",\"imageUri\":\"621695400690.dkr.ecr.ap-southeast-1.amazonaws.com/dotnetapplication:latest\"}]' | Out-File -FilePath imagedefinitions.json -Encoding utf8"
+      - printf '[{"name":"app","imageUri":"813080135850.dkr.ecr.ap-southeast-1.amazonaws.com/optimus_ecr_uat:latest"}]' > imagedefinitions.json
 
 artifacts:
   files:
     - '**/*'
   discard-paths: yes
+  name: "BuildArtif"%                      
