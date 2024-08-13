@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+  build:
+    commands:
+      - echo Retrieving PFX certificate and password from Secrets Manager...
+      - export CERTIFICATE_CONTENT=$(aws secretsmanager get-secret-value --secret-id my-pfx-cert1 --query SecretBinary --output text | base64)
+      - export PFX_PASSWORD=$(aws secretsmanager get-secret-value --secret-id my-pfx-password --query SecretString --output text)
+      - echo Building the Docker image...
+      - docker build --build-arg CERTIFICATE_CONTENT=$CERTIFICATE_CONTENT --build-arg PFX_PASSWORD=$PFX_PASSWORD -t my-image .
+  post_build:
+    commands:
+      - echo Tagging the Docker image...
+      - docker tag my-image:latest $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/my-image:latest
+      - echo Pushing the Docker image...
+      - docker push $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/my-image:latest
+
+artifacts:
+  files:
+    - '**/*'
+  discard-paths: yes
